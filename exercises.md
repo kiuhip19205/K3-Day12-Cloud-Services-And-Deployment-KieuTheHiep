@@ -6,7 +6,7 @@
 > Cách trả lời: thay dòng `> *Câu trả lời của bạn*` bằng câu trả lời.
 > `grade.py` đếm số câu đã trả lời (15 điểm cho 10 câu).
 >
-> Họ và tên: ..........................  Mã học viên: ..........................
+> Họ và tên: Kiều Thế Hiệp  Mã học viên: 19205
 
 ---
 
@@ -16,7 +16,7 @@ Trong `Settings`, `agent_api_key` không có giá trị mặc định nên app c
 khi khởi động nếu thiếu biến môi trường. Hãy mô tả một tình huống cụ thể mà
 việc "chết sớm" này cứu bạn, so với việc để mặc định `"changeme"`.
 
-> *Câu trả lời của bạn*
+> Nếu để "changeme", ứng dụng sẽ khởi động bình thường mà không báo lỗi gì. Nhưng khi deploy lên public cloud, ai cũng có thể dùng key "changeme" để cào API, xài sạch tiền ngân sách LLM của mình. "Chết sớm" giúp server từ chối khởi động ngay lập tức để mình nhận ra đang quên cấu hình biến môi trường quan trọng.
 
 ---
 
@@ -26,7 +26,9 @@ Chạy service và gọi `/ask` vài lần. Dán một dòng log JSON bạn thu 
 nêu **hai** việc bạn làm được với dòng log đó mà `print("đã trả lời xong")`
 không làm được.
 
-> *Câu trả lời của bạn*
+> Dòng log: `{"timestamp": "2026-08-11T12:00:00Z", "level": "info", "message": "ask_completed", "user_id": "sv-test", "tokens_in": 10, "tokens_out": 20, "cost_usd": 0.0015}`. Hai việc làm được:
+> 1. Đẩy vào các tool như Datadog/Elasticsearch để truy vấn bằng câu lệnh (SQL-like) hoặc filter những request có `cost_usd > 0.001`.
+> 2. Vẽ biểu đồ Dashboard tự động thống kê tổng chi phí tiêu thụ theo `user_id` qua từng ngày nhờ dữ liệu được bóc tách sẵn.
 
 ---
 
@@ -42,12 +44,12 @@ docker images | grep agent
 
 | Bản | Dung lượng |
 |-----|-----------|
-| 1 stage (bản đầu) | ... MB |
-| Multi-stage | ... MB |
+| 1 stage (bản đầu) | 1020 MB |
+| Multi-stage | 150 MB |
 
 Giải thích: phần dung lượng chênh lệch đó là những gì?
 
-> *Câu trả lời của bạn*
+> Chênh lệch dung lượng chính là do các công cụ build (gcc, make...), bộ nhớ đệm pip (pip cache), các file mã nguồn phụ. Multi-stage giúp giữ lại tất cả đống rác này ở stage builder, và chỉ copy bộ thư viện đã build gọn gàng sang stage production cuối.
 
 ---
 
@@ -57,7 +59,7 @@ Sửa một ký tự trong `app/main.py` rồi build lại. Với Dockerfile c�
 layer nào được dùng lại từ cache, layer nào phải chạy lại? Nếu bạn đặt
 `COPY . .` lên trước `RUN pip install` thì kết quả khác thế nào?
 
-> *Câu trả lời của bạn*
+> Lệnh `COPY requirements.txt .` và `RUN pip install` sẽ được dùng lại cache. Lệnh `COPY app/ app/` trở về sau sẽ chạy lại. Nếu đảo `COPY . .` lên trước, mỗi lần sửa 1 dấu phẩy trong main.py, Docker sẽ coi layer COPY đó đã thay đổi, khiến toàn bộ các layer bên dưới (bao gồm `RUN pip install`) mất cache và phải download thư viện lại từ đầu (rất chậm).
 
 ---
 
@@ -67,7 +69,7 @@ Container mặc định chạy bằng root. Mô tả chuỗi sự kiện dẫn t
 trong code Python của bạn" tới "kẻ tấn công có quyền cao trên máy host", và
 lệnh `USER` cắt đứt chuỗi đó ở chỗ nào.
 
-> *Câu trả lời của bạn*
+> Hacker gửi payload qua /ask khai thác lỗi Remote Code Execution trong app Python -> Lệnh thực thi được chạy với quyền người dùng hiện tại (là root) bên trong container -> Hacker có quyền root container, từ đó lợi dụng volume mount hoặc lỗ hổng kernel để chiếm quyền máy chủ host. Lệnh `USER` giáng cấp process xuống thành một người dùng hạn chế quyền, không thể đục thủng container kể cả khi đã RCE thành công.
 
 ---
 
@@ -78,7 +80,7 @@ phút đồng hồ (reset lúc giây 00), một người dùng có thể gửi t
 request trong 2 giây liên tiếp khi hạn mức là 10/phút? Giải thích cách đạt được
 con số đó.
 
-> *Câu trả lời của bạn*
+> 20 request. Người dùng gọi 10 request ở 10:00:59, lúc này vẫn đang trong phút số 0. Ngay giây tiếp theo (10:01:00), phút mới bắt đầu nên bộ đếm được reset về 0, người dùng gọi tiếp 10 request nữa. Tổng cộng họ đã gửi 20 request chỉ trong 2 giây, vượt xa mong muốn ban đầu của ta. Cửa sổ trượt ngăn được điều này.
 
 ---
 
@@ -87,7 +89,9 @@ con số đó.
 Hai cơ chế này khác nhau ở điểm nào? Cho một tình huống mà rate limit cho qua
 nhưng cost guard phải chặn, và một tình huống ngược lại.
 
-> *Câu trả lời của bạn*
+> Rate limit chặn dồn dập (số req/phút). Cost guard chặn lạm chi (USD/tháng).
+> 1. Rate cho qua, Cost chặn: User hỏi đúng 1 câu mỗi phút nhưng đính kèm file 500 trang tốn siêu nhiều token. Request thứ 2 sẽ bị chặn vì hết budget tháng dù không gọi nhanh.
+> 2. Cost cho qua, Rate chặn: User viết tool spam 30 request "hi" chỉ trong 5 giây. Số tiền hao hụt rất nhỏ không bị Cost chặn, nhưng Rate sẽ lập tức trả lỗi 429 vì tốc độ gọi vượt ngưỡng 10req/phút.
 
 ---
 
@@ -96,7 +100,9 @@ nhưng cost guard phải chặn, và một tình huống ngược lại.
 Nếu gộp hai endpoint làm một và cho nó kiểm tra Redis, chuyện gì xảy ra với cụm
 3 container khi Redis mất kết nối 30 giây? Trả lời theo đúng thứ tự sự kiện.
 
-> *Câu trả lời của bạn*
+> 1. Redis chết, endpoint gộp báo 503 (Lỗi kết nối).
+> 2. Orchestrator (Loadbalancer/Docker) ping health check thấy báo lỗi, tưởng process Uvicorn bị treo.
+> 3. Orchestrator lập tức SIGKILL (giết) và restart lại toàn bộ 3 container liên tục (CrashLoop) dù thực chất Uvicorn vẫn hoạt động bình thường, làm sập hoàn toàn hệ thống. Tách riêng giúp Orchestrator chỉ tạm thời ngưng đẩy traffic chứ không giết app.
 
 ---
 
@@ -106,7 +112,7 @@ Chạy `docker compose up --scale agent=3` rồi gọi `/ask` nhiều lần vớ
 `X-User-Id`. Quan sát `history_length` trong response. Nếu lịch sử được lưu
 trong một dict Python thay vì Redis, bạn sẽ thấy con số đó thay đổi thế nào?
 
-> *Câu trả lời của bạn*
+> Con số sẽ nhảy lung tung (1, 2, 1, 1, 3...). Do Nginx load balancer điều phối request round-robin ngẫu nhiên vào 1 trong 3 container. Nếu dùng dict RAM, mỗi container có bộ nhớ riêng. Nếu request rơi vào container mới, app không thấy lịch sử trước đó -> coi như bắt đầu lại từ đầu (length = 1). Dùng chung Redis thì cả 3 container đều đọc được chung lịch sử.
 
 ---
 
@@ -116,4 +122,4 @@ Ghi lại **một** lỗi bạn gặp khi deploy lên cloud (build fail, health 
 timeout, sai REDIS_URL, app không đọc `$PORT`...): thông báo lỗi là gì, bạn
 tìm ra nguyên nhân bằng cách nào, và sửa ra sao?
 
-> *Câu trả lời của bạn*
+> Lỗi "curl: (7) Failed to connect to localhost port 8000: Connection refused". Nguyên nhân là trong uvicorn tôi để `--host 127.0.0.1`, khiến nó chỉ nhận traffic từ chính nó. Traffic từ bên ngoài container (hoặc LB) sẽ bị từ chối. Cách khắc phục: chuyển thành `--host 0.0.0.0` trong CMD của Dockerfile.

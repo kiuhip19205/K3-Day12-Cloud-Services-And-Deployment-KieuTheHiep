@@ -40,9 +40,21 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # TODO (CP1): khai báo 6 trường theo bảng trên, ví dụ:
-    #     port: int = 8000
-    #     agent_api_key: str
+    from pydantic import field_validator
+    
+    port: int = 8000
+    agent_api_key: str
+    redis_url: str = "redis://localhost:6379/0"
+    rate_limit_per_minute: int = 10
+    monthly_budget_usd: float = 10.0
+    log_level: str = "INFO"
+
+    @field_validator("agent_api_key")
+    @classmethod
+    def validate_agent_api_key(cls, v: str) -> str:
+        if not v or v == "doi-thanh-khoa-cua-rieng-ban":
+            raise ValueError("agent_api_key must be configured and cannot be the default placeholder.")
+        return v
 
 
 @lru_cache(maxsize=1)
